@@ -1,0 +1,63 @@
+@import '../responsive.scss';
+.profilepage{
+    display: flex;
+    height: 100%;
+    @include md{
+        flex-direction: column;
+        overflow: scroll;
+        scrollbar-width: none;
+
+    }
+    .details{
+        flex: 3;
+          @include md{
+       flex: none;
+       height: max-content;
+    }
+        .wrapper{
+            padding-right: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+            overflow-y: scroll;
+              scrollbar-width: none; /* Removes scrollbar (no visible arrow) */
+            //    -ms-overflow-style: none; /* IE 10+ */
+            height: 100%;
+            .tittle{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                h1{
+                    font-weight: 300;
+                }
+                button{
+                    padding: 12px 24px;
+                    background-color: #fece51;
+                    border: none;
+                    border-radius: 10px;
+                    cursor: pointer;
+                }
+            }
+            .info{
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                img{
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                }
+            }
+        }
+    }
+    .chatcontainer{
+        flex: 2;
+        height: 100%;
+        
+        .wrapper{
+            padding: 0px 20px;
+            height: 100%;
+        }
+    }
+}

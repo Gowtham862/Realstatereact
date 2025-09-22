@@ -1,0 +1,144 @@
+@import "../responsive.scss";
+nav{
+    height: 100px; 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+   a{
+    transition: all 1s ease;
+
+    @include sm{
+        display: none;
+    }
+
+
+    &:hover{
+        transform:scale(1.05) ;
+    }
+   }
+    .left{
+        flex: 3;
+        display: flex;
+        gap: 50px;
+        align-items: center;
+       .logo{
+        font-weight: bold;
+        font-size: 20px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+
+        span{
+            @include md{
+                display: none;
+            }
+            @include sm{
+                display: initial;
+            }
+        }
+       }
+    }
+    .right{
+        flex: 2;
+       display: flex;
+       align-items: center;
+       justify-content: flex-end;
+       gap: 10px;
+       height: 100%;
+       background-color: #fcf5f3;
+       @include md{
+        background-color: transparent;
+       }
+         a{
+
+            padding: 10px 20px;
+         }
+           
+        .user{
+         display: flex;
+         gap: 10px;
+         font-weight: bold;
+         align-items: center;
+         img{
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 20px;
+         }
+         .profile{
+            padding:  12px 24px;
+            background-color: #fece51;
+            border: none;
+            cursor: pointer;
+            position: relative;
+
+             .notification{
+            position: absolute;
+            top: -8px;
+           right: -8px;
+            background-color: red;
+            color: #fcf5f3;
+            border-radius: 50%;
+            object-fit: cover;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+           
+         }
+         }
+        
+
+        }
+        
+           .register
+       {
+        background-color: #fece51;
+       }
+       .menuicon{
+        display: none;
+        z-index: 1;
+        background-color: #e6cf97;
+        @include sm{
+            display: inline;
+        }
+       }
+       .menu{
+        display: none;
+       }
+        @include sm{
+       .menu{
+        display: inline;
+        position: absolute;
+        top: 0;
+        right: -50%;
+        background-color: black;
+        color: white;
+        height: 100vh;
+        width: 50%;
+        transition: all 0.5s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        gap:20px;
+         &.active{
+           right: 0;
+       }
+       @include sm{
+        a{
+        display: initial;
+        }
+       }
+       }
+      
+    }
+    }
+}
+img{
+    height: 20px;
+    width: 20px;
+}
