@@ -1,23 +1,22 @@
 # ansible/setup.yml
-# Updated for Debian OS + user DELL
 # Run with: ansible-playbook -i inventory.ini setup.yml
+# On any new GCP VM - fully automatic, no manual steps
 
 ---
-- name: Setup my-dev-vm for real estate React app
+- name: Setup VM for Real Estate React App
   hosts: webservers
   become: true
 
   vars:
-    gcp_project_id: "YOUR_PROJECT_ID"        # replace with your GCP project ID
+    gcp_project_id: "project-ea2672a1-081c-4491-a51"
     gcp_region: "asia-south1"
-    image_name: "real"
-    ar_repo: "real"
-    full_image: "asia-south1-docker.pkg.dev/{{ gcp_project_id }}/{{ ar_repo }}/{{ image_name }}:latest"
+    full_image: "asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:latest"
+    vm_user: "gowthamk712812"
 
   tasks:
 
     # ──────────────────────────────────────────
-    # 1. INSTALL DOCKER ON DEBIAN
+    # 1. INSTALL DOCKER
     # ──────────────────────────────────────────
     - name: Install required packages
       apt:
@@ -38,7 +37,7 @@
       args:
         creates: /etc/apt/keyrings/docker.gpg
 
-    - name: Add Docker repository for Debian
+    - name: Add Docker repository
       shell: |
         echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
         | tee /etc/apt/sources.list.d/docker.list > /dev/null
@@ -62,14 +61,14 @@
         state: started
         enabled: yes
 
-    - name: Add DELL user to docker group
+    - name: Add user to docker group
       user:
-        name: DELL
+        name: "{{ vm_user }}"
         groups: docker
         append: yes
 
     # ──────────────────────────────────────────
-    # 2. INSTALL GCLOUD CLI ON DEBIAN
+    # 2. INSTALL GCLOUD CLI
     # ──────────────────────────────────────────
     - name: Add Google Cloud GPG key
       shell: |
@@ -92,37 +91,23 @@
         update_cache: yes
 
     # ──────────────────────────────────────────
-    # 3. COPY GCP SERVICE ACCOUNT KEY
+    # 3. AUTHENTICATE WITH GCP (uses VM's built-in service account)
+    # No JSON key needed! GCP VMs authenticate automatically.
     # ──────────────────────────────────────────
-    - name: Create credentials directory
-      file:
-        path: /etc/gcp
-        state: directory
-        mode: '0700'
-
-    - name: Copy GCP service account key
-      copy:
-        src: ./gcp-key.json         # place your key file in ansible/ folder
-        dest: /etc/gcp/key.json
-        mode: '0600'
-
-    # ──────────────────────────────────────────
-    # 4. AUTHENTICATE WITH GCP
-    # ──────────────────────────────────────────
-    - name: Authenticate gcloud
-      command: gcloud auth activate-service-account --key-file=/etc/gcp/key.json
-
     - name: Set GCP project
       command: gcloud config set project {{ gcp_project_id }}
+      become_user: "{{ vm_user }}"
 
-    - name: Configure Docker auth for Artifact Registry
+    - name: Configure Docker for Artifact Registry
       command: gcloud auth configure-docker {{ gcp_region }}-docker.pkg.dev --quiet
+      become_user: "{{ vm_user }}"
 
     # ──────────────────────────────────────────
-    # 5. PULL AND RUN YOUR REACT APP
+    # 4. PULL AND RUN YOUR REACT APP
     # ──────────────────────────────────────────
     - name: Pull React app image
       command: docker pull {{ full_image }}
+      become_user: "{{ vm_user }}"
 
     - name: Stop old container if running
       shell: docker stop real 2>/dev/null || true
@@ -131,15 +116,15 @@
       shell: docker rm real 2>/dev/null || true
 
     - name: Run React app on port 80
-      command: >
-        docker run -d
-        --name real
-        --restart unless-stopped
-        -p 80:80
-        {{ full_image }}
+      shell: |
+        docker run -d \
+          --name real \
+          --restart unless-stopped \
+          -p 80:80 \
+          {{ full_image }}
 
     - name: Verify app is running
-      command: docker ps --filter name=real --format "{{ '{{' }}.Status{{ '}}' }}"
+      command: docker ps --filter name=real
       register: status
 
     - name: Show status
