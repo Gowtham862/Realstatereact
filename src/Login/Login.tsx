@@ -46,7 +46,7 @@ function Login() {
           <input name="password" type="password" placeholder="Password" />
           <button disabled={loading}>Login</button>
           {error && <span>{error}</span>}
-          <Link to="/register">{"Don't"} you have an account? yes</Link>
+          <Link to="/register">{"Don't"} you have an account? Register</Link>
         </form>
       </div>
       <div className="imgContainer">
