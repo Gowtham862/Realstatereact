@@ -90,6 +90,7 @@ function chat() {
         </div>
       </div>}
     </div>
+   
   );
 }
 

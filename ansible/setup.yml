@@ -1,0 +1,147 @@
+# ansible/setup.yml
+# Updated for Debian OS + user DELL
+# Run with: ansible-playbook -i inventory.ini setup.yml
+
+---
+- name: Setup my-dev-vm for real estate React app
+  hosts: webservers
+  become: true
+
+  vars:
+    gcp_project_id: "YOUR_PROJECT_ID"        # replace with your GCP project ID
+    gcp_region: "asia-south1"
+    image_name: "real"
+    ar_repo: "real"
+    full_image: "asia-south1-docker.pkg.dev/{{ gcp_project_id }}/{{ ar_repo }}/{{ image_name }}:latest"
+
+  tasks:
+
+    # ──────────────────────────────────────────
+    # 1. INSTALL DOCKER ON DEBIAN
+    # ──────────────────────────────────────────
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+        state: present
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository for Debian
+      shell: |
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+        | tee /etc/apt/sources.list.d/docker.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/docker.list
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add DELL user to docker group
+      user:
+        name: DELL
+        groups: docker
+        append: yes
+
+    # ──────────────────────────────────────────
+    # 2. INSTALL GCLOUD CLI ON DEBIAN
+    # ──────────────────────────────────────────
+    - name: Add Google Cloud GPG key
+      shell: |
+        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+        | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+      args:
+        creates: /usr/share/keyrings/cloud.google.gpg
+
+    - name: Add Google Cloud repository
+      shell: |
+        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+        | tee /etc/apt/sources.list.d/google-cloud-sdk.list > /dev/null
+      args:
+        creates: /etc/apt/sources.list.d/google-cloud-sdk.list
+
+    - name: Install gcloud CLI
+      apt:
+        name: google-cloud-cli
+        state: present
+        update_cache: yes
+
+    # ──────────────────────────────────────────
+    # 3. COPY GCP SERVICE ACCOUNT KEY
+    # ──────────────────────────────────────────
+    - name: Create credentials directory
+      file:
+        path: /etc/gcp
+        state: directory
+        mode: '0700'
+
+    - name: Copy GCP service account key
+      copy:
+        src: ./gcp-key.json         # place your key file in ansible/ folder
+        dest: /etc/gcp/key.json
+        mode: '0600'
+
+    # ──────────────────────────────────────────
+    # 4. AUTHENTICATE WITH GCP
+    # ──────────────────────────────────────────
+    - name: Authenticate gcloud
+      command: gcloud auth activate-service-account --key-file=/etc/gcp/key.json
+
+    - name: Set GCP project
+      command: gcloud config set project {{ gcp_project_id }}
+
+    - name: Configure Docker auth for Artifact Registry
+      command: gcloud auth configure-docker {{ gcp_region }}-docker.pkg.dev --quiet
+
+    # ──────────────────────────────────────────
+    # 5. PULL AND RUN YOUR REACT APP
+    # ──────────────────────────────────────────
+    - name: Pull React app image
+      command: docker pull {{ full_image }}
+
+    - name: Stop old container if running
+      shell: docker stop real 2>/dev/null || true
+
+    - name: Remove old container if exists
+      shell: docker rm real 2>/dev/null || true
+
+    - name: Run React app on port 80
+      command: >
+        docker run -d
+        --name real
+        --restart unless-stopped
+        -p 80:80
+        {{ full_image }}
+
+    - name: Verify app is running
+      command: docker ps --filter name=real --format "{{ '{{' }}.Status{{ '}}' }}"
+      register: status
+
+    - name: Show status
+      debug:
+        msg: "✅ App is running: {{ status.stdout }}"

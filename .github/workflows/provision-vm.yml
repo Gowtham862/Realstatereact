@@ -1,0 +1,51 @@
+# .github/workflows/provision-vm.yml
+# Manually trigger this when you have a new VM
+# It will run the Ansible playbook automatically from GitHub Actions
+
+name: Provision New VM with Ansible
+
+on:
+  workflow_dispatch:          # trigger manually from GitHub Actions tab
+    inputs:
+      vm_ip:
+        description: "New VM IP address"
+        required: true
+
+jobs:
+  provision:
+    name: Run Ansible on new VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ansible
+
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Write GCP service account key
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' > ansible/gcp-key.json
+
+      - name: Update inventory with new VM IP
+        run: |
+          echo "[webservers]" > ansible/inventory.ini
+          echo "vm1 ansible_host=${{ github.event.inputs.vm_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
+          echo "[webservers:vars]" >> ansible/inventory.ini
+          echo "ansible_python_interpreter=/usr/bin/python3" >> ansible/inventory.ini
+
+      - name: Disable SSH host key checking
+        run: |
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+
+      - name: Run Ansible playbook
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/setup.yml

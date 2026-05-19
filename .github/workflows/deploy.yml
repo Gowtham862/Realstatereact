@@ -1,0 +1,78 @@
+name: Deploy Real Estate React to GKE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: project-ea2672a1-081c-4491-a51
+  GCP_REGION: asia-south1
+  AR_REPO: real
+  IMAGE_NAME: real
+  GKE_CLUSTER: clusterlms
+  GKE_ZONE: asia-south1
+  IMAGE_TAG: ${{ github.sha }}
+  WORKLOAD_IDENTITY_PROVIDER: projects/1013846068583/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  SERVICE_ACCOUNT: ansible-deploy@project-ea2672a1-081c-4491-a51.iam.gserviceaccount.com
+
+jobs:
+  build-push-deploy:
+    name: Build, Push, Deploy
+    runs-on: ubuntu-latest
+
+    # Required for Workload Identity Federation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build . \
+            -t asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:${{ env.IMAGE_TAG }} \
+            -t asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:latest
+
+      - name: Push to Artifact Registry
+        run: |
+          docker push asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:${{ env.IMAGE_TAG }}
+          docker push asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:latest
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: clusterlms
+          location: asia-south1
+
+      - name: Create namespace if not exists
+        run: kubectl create namespace real --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply Kubernetes manifests
+        run: kubectl apply -f k8s/
+
+      - name: Update image
+        run: |
+          kubectl set image deployment/real \
+            real=asia-south1-docker.pkg.dev/project-ea2672a1-081c-4491-a51/real/real:${{ env.IMAGE_TAG }} \
+            -n real
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/real -n real --timeout=120s
+
+      - name: Show app URL
+        run: kubectl get service real -n real

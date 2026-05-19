@@ -36,7 +36,7 @@ function Navbars() {
         <img src="./menu.png" alt="" onClick={()=>setopen(!open)} />
         </div> 
         <div className={open ? "menu active":"menu"}>
-        <a href="">Home</a>
+        <a href="/listpage">Home</a>
         <a href="">About</a>
         <a href="">Contacts</a>
         <a href="">Agends</a>

@@ -5,6 +5,14 @@ import Chat from '../chat/chat';
 
 
 function Profilepage() {
+  const handlelogout= async()=>{
+   try{
+
+   }
+   catch{
+
+   }
+  }
   return (
     <div className="profilepage">
       <div className="details">
@@ -19,10 +27,11 @@ function Profilepage() {
             </span>
             <span>Username: <b>Gowtham</b></span>
             <span>Email : <b>Gowthamk712812@gamil.com</b></span>
+            <button>Logout</button>
           </div>
           <div className="tittle">
             <h3>My List</h3>
-            <button>Create a new post</button>
+            <button onClick={handlelogout}>Create a new post</button>
           </div>
           <List/>
           <div className="tittle">

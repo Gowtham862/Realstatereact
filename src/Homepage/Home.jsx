@@ -32,7 +32,7 @@ function Home() {
         </div>
       </div>
       <div className="imgcontainer">
-        <img src="./realstateimage.jpg" alt="" />
+        <img src="./bg.png" alt="" />
       </div>
     </div>
   );
