@@ -1,9 +1,7 @@
 import './profilepage.scss'
 
 import List from "../list/list";
-import Chat from '../chat/chat';
-
-
+import Chat from "../Chat/Chat";
 function Profilepage() {
   const handlelogout= async()=>{
    try{
